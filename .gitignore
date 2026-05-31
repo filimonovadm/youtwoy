@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Sensitive files - NEVER commit
+sa-key.json
+*.key.json
+*-key.json
+service-account*.json
+.env
+.env.local
+.env.*.local
+
+# Terraform state (contains secrets)
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfstate.*.backup
+.terraform.lock.hcl
+terraform.tfvars
+
+# OS files
+.DS_Store
+._*
+
+# Editor
+.idea/
+.vscode/
+
+# Logs
+*.log
