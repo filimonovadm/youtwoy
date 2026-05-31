@@ -32,6 +32,22 @@ resource "yandex_resourcemanager_folder_iam_member" "sa_containers_editor" {
   member    = "serviceAccount:${yandex_iam_service_account.youtwoy_sa.id}"
 }
 
+# serverless.containers.editor cannot bind Lockbox secrets to a revision;
+# functions.editor carries that permission (Yandex Cloud IAM quirk).
+resource "yandex_resourcemanager_folder_iam_member" "sa_functions_editor" {
+  folder_id = var.folder_id
+  role      = "functions.editor"
+  member    = "serviceAccount:${yandex_iam_service_account.youtwoy_sa.id}"
+}
+
+# Required to deploy with --service-account-id (use the SA as a resource),
+# even when the deployer and runtime SA are the same account.
+resource "yandex_iam_service_account_iam_member" "sa_self_user" {
+  service_account_id = yandex_iam_service_account.youtwoy_sa.id
+  role               = "iam.serviceAccounts.user"
+  member             = "serviceAccount:${yandex_iam_service_account.youtwoy_sa.id}"
+}
+
 # ============================================================
 # Lockbox access for the bot SA (token + webhook secret)
 # ============================================================
