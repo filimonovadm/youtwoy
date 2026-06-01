@@ -1,5 +1,6 @@
 import asyncio
 import re
+import subprocess
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -35,6 +36,7 @@ class DownloadResult:
     width: int
     height: int
     duration: int
+    thumbnail: Path | None
 
 
 # Лимит Bot API (50 МБ) минус запас на контейнер mp4 и погрешность мультиплексора.
@@ -48,6 +50,27 @@ _FORMAT = (
     f"/best[ext=mp4][height<=480]"
     f"/best[height<=480]/best"
 )
+
+
+def _make_thumbnail(video: Path, duration: int) -> Path | None:
+    thumb = video.with_name(video.stem + "_thumb.jpg")
+    # Кадр из середины ролика: начало YouTube-видео часто чёрный фейд,
+    # из-за которого Telegram показывает чёрное превью. -2 фильтр scale:
+    # ширина 320, высота кратна 2 (требование JPEG-кодека).
+    seek = max(duration // 2, 0)
+    cmd = [
+        "ffmpeg", "-y", "-loglevel", "error",
+        "-ss", str(seek), "-i", str(video),
+        "-frames:v", "1", "-vf", "scale=320:-2", "-q:v", "4",
+        str(thumb),
+    ]
+    try:
+        subprocess.run(cmd, check=True, capture_output=True, timeout=30)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+        return None
+    if thumb.exists() and thumb.stat().st_size > 0:
+        return thumb
+    return None
 
 
 def _blocking_download(url: str, out_dir: str) -> DownloadResult:
@@ -83,13 +106,16 @@ def _blocking_download(url: str, out_dir: str) -> DownloadResult:
             f"Видео {size // (1024 * 1024)} МБ превышает лимит Telegram 50 МБ"
         )
 
+    duration = int(info.get("duration") or 0)
+
     return DownloadResult(
         path=path,
         title=str(info.get("title") or path.stem),
         size_bytes=size,
         width=int(info.get("width") or 0),
         height=int(info.get("height") or 0),
-        duration=int(info.get("duration") or 0),
+        duration=duration,
+        thumbnail=_make_thumbnail(path, duration),
     )
 
 

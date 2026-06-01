@@ -58,6 +58,7 @@ async def handle_link(message: Message) -> None:
             width=result.width or None,
             height=result.height or None,
             duration=result.duration or None,
+            thumbnail=FSInputFile(result.thumbnail) if result.thumbnail else None,
             supports_streaming=True,
         )
         await status.delete()
