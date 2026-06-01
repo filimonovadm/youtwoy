@@ -32,8 +32,8 @@ resource "yandex_resourcemanager_folder_iam_member" "sa_containers_editor" {
   member    = "serviceAccount:${yandex_iam_service_account.youtwoy_sa.id}"
 }
 
-# serverless.containers.editor cannot bind Lockbox secrets to a revision;
-# functions.editor carries that permission (Yandex Cloud IAM quirk).
+# Serverless Containers share IAM with Cloud Functions; functions.editor is
+# the folder-level role that grants container revision deploy for some yc versions.
 resource "yandex_resourcemanager_folder_iam_member" "sa_functions_editor" {
   folder_id = var.folder_id
   role      = "functions.editor"
@@ -54,6 +54,15 @@ resource "yandex_iam_service_account_iam_member" "sa_self_user" {
 resource "yandex_lockbox_secret_iam_member" "sa_payload_viewer" {
   secret_id = var.lockbox_secret_id
   role      = "lockbox.payloadViewer"
+  member    = "serviceAccount:${yandex_iam_service_account.youtwoy_sa.id}"
+}
+
+# Deploying a revision with --secret makes yc validate the secret via
+# SecretService/Get (metadata read), which needs lockbox.viewer in addition
+# to payloadViewer. Without it the CLI fails with "flag --secret Permission denied".
+resource "yandex_lockbox_secret_iam_member" "sa_secret_viewer" {
+  secret_id = var.lockbox_secret_id
+  role      = "lockbox.viewer"
   member    = "serviceAccount:${yandex_iam_service_account.youtwoy_sa.id}"
 }
 
